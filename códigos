@@ -1,0 +1,77 @@
+langchain==0.1.13
+openai==1.30.1
+python-dotenv==1.0.1
+pytest==8.2.1
+# src/prompts.py
+
+base_prompt = """
+Você é um especialista em testes unitários com Python.
+Sua tarefa é gerar testes para a seguinte função:
+
+{code}
+
+Use a biblioteca pytest para os testes.
+Não inclua comentários ou explicações no resultado, apenas o código do teste.
+"""
+# src/generator.py
+
+from langchain.chat_models import AzureChatOpenAI
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from .prompts import base_prompt
+
+def gerar_teste(codigo_funcao, model):
+    prompt = PromptTemplate.from_template(base_prompt)
+    chain = LLMChain(llm=model, prompt=prompt)
+    resultado = chain.run(code=codigo_funcao)
+    return resultado
+# src/utils.py
+
+import os
+
+def salvar_teste_em_arquivo(nome_arquivo, conteudo_teste):
+    path = f"tests/test_{nome_arquivo}"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(conteudo_teste)
+    print(f"💾 Teste salvo em: {path}")
+# src/main.py
+
+import os
+from dotenv import load_dotenv
+from langchain.chat_models import AzureChatOpenAI
+from .generator import gerar_teste
+from .utils import salvar_teste_em_arquivo
+
+load_dotenv()
+
+# Configurar modelo Azure ChatGPT
+llm = AzureChatOpenAI(
+    openai_api_key=os.getenv("AZURE_OPENAI_KEY"),
+    openai_api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    deployment_name=os.getenv("AZURE_DEPLOYMENT_NAME"),
+    openai_api_version="2023-05-15",
+    temperature=0.2
+)
+
+# Exemplo de código a ser testado
+codigo = """
+def soma(a, b):
+    return a + b
+"""
+
+print("🔍 Função recebida:")
+print(codigo)
+
+# Geração e salvamento
+teste_gerado = gerar_teste(codigo, llm)
+print("✅ Teste gerado:")
+print(teste_gerado)
+
+salvar_teste_em_arquivo("soma.py", teste_gerado)
+# tests/exemplo_func.py
+
+def multiplicar(a, b):
+    return a * b
+AZURE_OPENAI_KEY=your-key-here
+AZURE_OPENAI_ENDPOINT=https://your-instance.openai.azure.com/
+AZURE_DEPLOYMENT_NAME=your-deployment-name
